@@ -43,6 +43,8 @@ while 1:
 
 Note that checking if a user is logged in cross-domain requires a pre-configured shared state between two domains. *(subdomains automatically get a shared state, unless otherwise turned off by the domain owner)*
 
+## User Registration
+
 To register a user, assuming you've set up the domain before hand with the IM. You can use the `register_user` function:
 
 ```python
@@ -52,6 +54,8 @@ def user_created(data, *args, **kwargs):
 
 life.register_user(user='anton', domain='obtain.life', callback=user_created)
 ```
+
+## Event push notifications
 
 To get authentication events pushed from the IM to your back-end service, register a auth hook:
 
@@ -63,3 +67,4 @@ def auth_event(data, *args, **kwargs):
 life.event_hook('auth', auth_event)
 ```
 
+For a complete list of events, see [Event types](https://github.com/Torxed/obtain.life/wiki/Event-types) at `obtain.life`
