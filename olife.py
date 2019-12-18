@@ -1,8 +1,48 @@
 import hmac
 import hashlib
 import glob
+import json
 from socket import *
 from select import epoll, EPOLLIN, EPOLLHUP
+
+import logging
+from systemd.journal import JournalHandler
+
+# Custom adapter to pre-pend the 'origin' key.
+# TODO: Should probably use filters: https://docs.python.org/3/howto/logging-cookbook.html#using-filters-to-impart-contextual-information
+class CustomAdapter(logging.LoggerAdapter):
+	def process(self, msg, kwargs):
+		return '[{}] {}'.format(self.extra['origin'], msg), kwargs
+
+logger = logging.getLogger() # __name__
+journald_handler = JournalHandler()
+journald_handler.setFormatter(logging.Formatter('[{levelname}] {message}', style='{'))
+logger.addHandler(journald_handler)
+logger.setLevel(logging.DEBUG)
+
+class LOG_LEVELS:
+	CRITICAL = 1
+	ERROR = 2
+	WARNING = 3
+	INFO = 4
+	DEBUG = 5
+
+def log(*msg, origin='UNKNOWN', level=5, **kwargs):
+	if level <= LOG_LEVEL:
+		msg = [item.decode('UTF-8', errors='backslashreplace') if type(item) == bytes else item for item in msg]
+		msg = [str(item) if type(item) != str else item for item in msg]
+		log_adapter = CustomAdapter(logger, {'origin': origin})
+		if level <= 1:
+			log_adapter.critical(' '.join(msg))
+		elif level <= 2:
+			log_adapter.error(' '.join(msg))
+		elif level <= 3:
+			log_adapter.warning(' '.join(msg))
+		elif level <= 4:
+			log_adapter.info(' '.join(msg))
+		else:
+			log_adapter.debug(' '.join(msg))
+
 class obtain_life():
 	def __init__(self, secret, alg='HS256', host='obtain.life', port=1339, cert=None, key=None):
 		self.sock = socket()
@@ -51,13 +91,13 @@ class obtain_life():
 	def HMAC_256(self, data, key=None):
 		if not key: key = self.secret
 		if type(data) == dict: data = json.dumps(data, separators=(',', ':'))
-		print(f'Signing with key: {key}')
-		print(json.dumps(json.loads(data), indent=4, separators=(',', ':')))
+		log(f'Signing with key: {key}', origin='obtain_life.HMAC_256', level=LOG_LEVELS.DEBUG)
+		log(json.dumps(json.loads(data), indent=4, separators=(',', ':')), origin='obtain_life.HMAC_256', level=LOG_LEVELS.DEBUG)
 
 		signature = hmac.new(bytes(key , 'UTF-8'), msg=bytes(data , 'UTF-8'), digestmod = hashlib.sha256).hexdigest().upper()
 		return signature
 
-	def poll(self, timeout=0.001):
+	def poll(self, timeout=0.001, *args, **kwargs):
 		return dict(self.pollobj.poll(timeout))
 
 	def close(self, *args, **kwargs):
@@ -70,19 +110,19 @@ class obtain_life():
 
 		self.sock.send(data)
 
-	def recv(self, buf=8192):
-		if self.poll():
+	def recv(self, buf=8192, *args, **kwargs):
+		if self.poll(*args, **kwargs):
 			return self.sock.recv(buf)
 
-	def parse_life_data(self, data):
+	def parse(self, data):
 		if not data or len(data) <= 0:
-			log('Life disconnected on us, reconnect?', origin='olife.parse_life_data', level=LOG_LEVELS.WARNING)
+			log('Life disconnected on us, reconnect?', origin='obtain_life.parse', level=LOG_LEVELS.WARNING)
 			self.close() # reconnect?
 			return None
 
 		if type(data) != dict: data = json.loads(data.decode('UTF-8'))
 		
-		print('Life sent:', data)
+		log(f'Life sent: {data}', origin='obtain_life.parse', level=LOG_LEVELS.DEBUG)
 		if '_module' in data:
 			if data['_module'] == 'auth':
 				## Someone logged in
@@ -101,7 +141,7 @@ class obtain_life():
 				self.user_cache[user['domain']][user['username']] = token
 				self.authenticated[token] = user
 
-				print(json.dumps(self.authenticated, indent=4))
+		return data
 
 	def subscribe(self, domain, secret):
 		payload = {
@@ -118,7 +158,8 @@ class obtain_life():
 
 		self.send(payload)
 
-	def is_loggedin(self, token, domain=''):
+	def is_loggedin(self, token, domain=None):
+		if not domain: domain = self.domain
 		if token in self.authenticated: return True
-		elif self.domain and self.domain in self.user_cache and token in self.user_cache[self.domain]: return True
+		elif domain and domain in self.user_cache and token in self.user_cache[domain]: return True
 		return False
