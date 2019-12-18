@@ -1,5 +1,24 @@
 # python-olife
-Python bindings for obtain.life. Used in back-end services to apply SSO *(single Sign On)* or to communicate with the obtain.life Identity Management suit *(self-hosted or otherwise)*
+Python bindings for [obtain.life](https://github.com/Torxed/obtain.life).<br>
+Used in back-end services to get SSO *(single Sign On)* or to communicate with the obtain.life Identity Management suit *(self-hosted or otherwise)*
+
+Essentiallu a minified version of JWT but a lighter version with Identity Management.
+
+# Features
+
+ * [HS256](https://github.com/Torxed/python-olife/wiki/HS256)
+ * <strike>HS384</strike>
+ * <strike>HS512</strike>
+ * <strike>RS256</strike>
+ * <strike>RS384</strike>
+ * <strike>RS512</strike>
+ * <strike>ES256</strike>
+ * <strike>ES384</strike>
+ * <strike>ES512</strike>
+ * <strike>PS256</strike>
+ * <strike>PS384</strike>
+ * <strike>PS512</strike>
+ * <strike>EdDSA</strike>
 
 # How to use
 
