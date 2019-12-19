@@ -163,3 +163,15 @@ class obtain_life():
 		if token in self.authenticated: return True
 		elif domain and domain in self.user_cache and token in self.user_cache[domain]: return True
 		return False
+
+	def login(self, user, password):
+		payload = {
+			"alg": self.alg,
+			"domain": self.domain,
+			"_module": "auth",
+			"username": user,
+			"password": password
+		}
+		payload['sign'] = self.HMAC_256(payload, self.secret)
+
+		self.send(payload)
