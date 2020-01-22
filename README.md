@@ -22,6 +22,8 @@ Essentiallu a minified version of JWT but a lighter version with Identity Manage
 
 # How to use
 
+Assuming `git clone git@github.com:Torxed/python-olife.git olife` in your projects root directory:
+
 ```python
 from olife import olife
 life = olife.obtain_life('shared secret if HS256 for instance')
