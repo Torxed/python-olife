@@ -23,8 +23,8 @@ Essentiallu a minified version of JWT but a lighter version with Identity Manage
 # How to use
 
 ```python
-from olife import obtain_life
-life = obtain_life('shared secret if HS256 for instance')
+from olife import olife
+life = olife.obtain_life('shared secret if HS256 for instance')
 life.subscribe('scientist.cloud', 'shared backend secret, different from shared secret above')
 
 while 1:
