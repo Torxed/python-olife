@@ -1,7 +1,9 @@
+import ssl
 import hmac
 import hashlib
 import glob
 import json
+import os
 from socket import *
 from select import epoll, EPOLLIN, EPOLLHUP
 
@@ -43,6 +45,9 @@ def log(*msg, origin='UNKNOWN', level=5, **kwargs):
 		else:
 			log_adapter.debug(' '.join(msg))
 
+def drop_privileges():
+	return True
+
 class obtain_life():
 	def __init__(self, secret, alg='HS256', host='obtain.life', port=1339, cert=None, key=None):
 		self.sock = socket()
@@ -67,12 +72,11 @@ class obtain_life():
 		#context = ssl.create_default_context()
 		#context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 		#context.load_cert_chain(cert, key)
-		context = context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
-		context.load_verify_locations("ca.crt")
-		try:
-			self.sock = context.wrap_socket(self.sock, server_side=False, server_hostname=host, do_handshake_on_connect=True)
-		except ssl.SSLCertVerificationError:
-			pass
+
+		context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+		context.load_default_certs()
+
+		self.sock = context.wrap_socket(self.sock, server_side=False, server_hostname=host, do_handshake_on_connect=True)
 		self.pollobj.register(self.sock.fileno(), EPOLLIN)
 
 		while drop_privileges() is None:
@@ -113,12 +117,15 @@ class obtain_life():
 	def recv(self, buf=8192, *args, **kwargs):
 		if self.poll(*args, **kwargs):
 			return self.sock.recv(buf)
+		return True
 
 	def parse(self, data):
-		if not data or len(data) <= 0:
+		if type(data) is bytes and len(data) <= 0:
 			log('Life disconnected on us, reconnect?', origin='obtain_life.parse', level=LOG_LEVELS.WARNING)
 			self.close() # reconnect?
 			return None
+
+		if type(data) == bool: return None
 
 		if type(data) != dict: data = json.loads(data.decode('UTF-8'))
 		
@@ -140,6 +147,8 @@ class obtain_life():
 				if not user['domain'] in self.user_cache: self.user_cache[user['domain']] = {}
 				self.user_cache[user['domain']][user['username']] = token
 				self.authenticated[token] = user
+
+				log(f'User {user["username"]}@{user["domain"]} logged in', level=LOG_LEVELS.INFO, origin='parse_life')
 
 		return data
 
